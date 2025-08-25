@@ -15,7 +15,7 @@
 
 /* TOP LEVEL */ 
 
-module rv_encapsulator #(
+module rv_encapsulator_atb #(
     parameter DATA_LEN = 32,
     parameter FIFO_DEPTH = 16
 ) (

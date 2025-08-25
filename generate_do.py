@@ -34,13 +34,13 @@ static_addfiles = [
     "project addfile src/rtl/atb_transmitter.sv",
     "project addfile src/rtl/encapsulator.sv",
     "project addfile src/rtl/slicer.sv",
-    "project addfile src/rtl/rv_encapsulator.sv",
-    "project addfile tb/tb_rv_encapsulator.sv"
+    "project addfile src/rtl/rv_encapsulator_atb.sv",
+    "project addfile tb/tb_rv_encapsulator_atb.sv"
 ]
 
 static_sim_commands = [
     "project compileall",
-    "vsim -voptargs=+acc work.tb_rv_encapsulator",
+    "vsim -voptargs=+acc work.tb_rv_encapsulator_atb",
     "log -r /*",
     "run 200"
 ]

@@ -19,7 +19,7 @@ import encap_pkg::*;
 
 localparam DATA_LEN = 32;
 
-module tb_rv_encapsulator ();
+module tb_rv_encapsulator_atb ();
 
     logic clk;
     logic reset;
@@ -56,7 +56,7 @@ module tb_rv_encapsulator ();
     logic [31:0] i;
 
     // DUT instantiation
-    rv_encapsulator #(
+    rv_encapsulator_atb #(
         .DATA_LEN(DATA_LEN)
     ) DUT (
         .clk_i               (clk),
@@ -81,7 +81,7 @@ module tb_rv_encapsulator ();
     logic [364:0] test_vector[1000:0];
 
     initial begin
-        $readmemb("tb/testvectors/tv_rv_encapsulator.txt", test_vector);
+        $readmemb("tb/testvectors/tv_rv_encapsulator_atb.txt", test_vector);
         i = 0;
         reset = 0; #10;
         reset = 1;   
