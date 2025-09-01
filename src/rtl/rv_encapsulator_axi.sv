@@ -146,7 +146,6 @@ module rv_encapsulator_axi #(
         .clk_i        (clk_i),
         .rst_ni       (rst_ni),
         .fifo_empty_i (slicer_fifo_empty),
-        .fifo_full_i  (slicer_fifo_full),
         .slice_i      (slicer_fifo_entry_o.slice),
         .valid_bytes_i(slicer_fifo_entry_o.valid_bytes),
         .fifo_pop_o   (slicer_fifo_pop),
