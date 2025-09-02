@@ -20,11 +20,11 @@ module atb_slice_to_axi_lite #(
     parameter AxiDataWidth = 32,
     parameter AxiAddrWidth = 32,
     // LITE AXI structs
-    parameter type  req_lite_t = logic,
+    parameter type req_lite_t = logic,
     parameter type resp_lite_t = logic,
     // Register
-    parameter addr_start = 32'b0;
-    parameter addr_end = 32'b10000000;
+    parameter addr_start = 32'b0,
+    parameter addr_end = 32'b10000000
 ) (
     input logic clk_i,
     input logic rst_ni,
@@ -32,21 +32,23 @@ module atb_slice_to_axi_lite #(
     // fifo atb slice
     input  logic [AxiDataWidth-1:0]         slice_i, //slicer_fifo.slice
     input  logic [$clog2(AxiDataWidth)-4:0] valid_bytes_i, //slicer_fifo.valid_bytes
-    input  logic                        fifo_empty_i,
-    output logic                        fifo_pop_o
+    input  logic                            fifo_empty_i,
+    output logic                            fifo_pop_o,
 
     // Master AXI LITE port
     output req_lite_t  req_lite_o,
     input  resp_lite_t resp_lite_i
 );
 
+`include "common_cells/registers.svh"
+
 // defines internal req signals
-logic [AxiAddrWidth-1:0] aw_addr; // address always on 32 bits
-logic                    aw_valid;
-logic                     w_valid;
-logic [AxiDataWidth-1:0]  w_data;
-logic [DataWidth/8-1:0]   w_strb;
-logic                     b_ready;
+logic [AxiAddrWidth-1:0]  aw_addr; // address always on 32 bits
+logic                     aw_valid;
+logic                      w_valid;
+logic [AxiDataWidth-1:0]   w_data;
+logic [AxiDataWidth/8-1:0] w_strb;
+logic                      b_ready;
 
 // defines internal resp signals
 logic      aw_ready;
@@ -67,7 +69,10 @@ assign  b_resp  = resp_lite_i.b.resp;
 // wstrb : index of bytes that should be written in AXI-Lite
 // vbytes_to_wstrb : valid bytes from ATB to wstrb for AXI-Lite
 // In ATB, the lower bytes is the header, so always valid, vbytes_to_wstrb[0] is always 1
-logic [DataWidth/8-1:0]   vbytes_to_wstrb;
+logic [AxiDataWidth/8-1:0] vbytes_to_wstrb;
+
+// CONCAT AND REPETION
+//{3-valid_bytes_i} {0} {valid_bytes_i} {1} 1
 
 if (AxiDataWidth == 64) begin
     always @(*) begin
@@ -100,8 +105,14 @@ end
 // #########################################
 // Define the states
 typedef enum {StIdle, StWrite, StWait, StPopNIncr} atb_to_axilite_state_e;
-
 atb_to_axilite_state_e state_d, state_q;
+
+// Define the address
+logic [AxiAddrWidth-1:0] aw_addr_d, aw_addr_q;
+
+// Register state and addr with FF
+`FF(state_q, state_d, StIdle, clk_i, rst_ni)
+`FF(aw_addr_q, aw_addr_d, addr_start, clk_i, rst_ni)
 
 // Combinational decode of the state
 always_comb begin
@@ -121,14 +132,14 @@ always_comb begin
         // StWait : waiting for resp so still resp ready
         StWait:
         if(b_valid) begin
-            state_d = StPop;
+            state_d = StPopNIncr;
         end
         // StPopNIncr : Popping the fifo and Incrementing the addr counter
         StPopNIncr: begin
         if(aw_addr_q == addr_end) begin
             aw_addr_d = addr_start;
         end else begin 
-            aw_addr_d += AxiDataWidth/8;
+            aw_addr_d += AxiDataWidth >> 3; // cleaner than /8
         end
         state_d = (fifo_empty_i) ? StIdle : StWrite;
         end
@@ -196,23 +207,12 @@ always_comb begin
     endcase
 end
 
-// Register the state
-always_ff @(posedge clk or negedge rst_n) begin
-  if (!rst_n) begin
-    state_q <= StIdle;
-    aw_addr_q <= addr_start;
-  end else begin
-    state_q <= state_d;
-    aw_addr_q <= aw_addr_d;
-  end
-end
-
 // Assign right signals to axi req
 assign req_lite_o.aw.addr  = aw_addr;
 assign req_lite_o.aw.prot  = '0; // (no protection considered?)
 assign req_lite_o.aw_valid = aw_valid;
 assign req_lite_o.w.data   = w_data;
-assign req_lite_o.w.strb   = w_strb
+assign req_lite_o.w.strb   = w_strb;
 assign req_lite_o.w_valid  = w_valid;
 assign req_lite_o.b_ready  = b_ready;
 // reading transaction does not exist in our case.
@@ -221,7 +221,8 @@ assign req_lite_o.ar_valid = '0;
 assign req_lite_o.r_ready  = '0;
 
 // Assertions
+/*
 assert((b_resp == 2'b00) && (b_ready && b_valid)) 
-else   $error("Response on AXI-Lite is not OKAY, write transaction UNSUCCESSFULL");
+else   $error("response on AXI-Lite is not OKAY, write transaction UNSUCCESSFULL");*/
 
 endmodule

@@ -20,36 +20,41 @@
 module rv_encapsulator_axi #(
     parameter FIFO_DEPTH = 16,
     parameter int unsigned AxiAddrWidth = 32'd0,
-    parameter int unsigned DataWidth    = 32'd0,
-    parameter type            axi_req_t       = logic,
-    parameter type            axi_rsp_t       = logic
+    parameter int unsigned AxiDataWidth = 32'd0,
+    parameter type         axi_req_t    = logic,
+    parameter type         axi_resp_t   = logic,
+    // Register
+    parameter addr_start = 32'b0,
+    parameter addr_end   = 32'b10000000
 ) (
-    input logic                                 clk_i,
-    input logic                                 rst_ni,
+    input logic clk_i,
+    input logic rst_ni,
 
     // inputs
-    input logic                                 valid_i,
-    input logic [encap_pkg::P_LEN-1:0]          packet_length_i,
-    input logic                                 notime_i,
-    //input logic                                 srcid_i,
-    input logic [encap_pkg::T_LEN-1:0]          timestamp_i,
-    //input logic [encap_pkg::TYPE_LEN-1:0]       type_i,
-    input logic [encap_pkg::PAYLOAD_LEN-1:0]    trace_payload_i,
+    input logic                              valid_i,
+    input logic [encap_pkg::P_LEN-1:0]       packet_length_i,
+    input logic                              notime_i,
+    //input logic                            srcid_i,
+    input logic [encap_pkg::T_LEN-1:0]       timestamp_i,
+    //input logic [encap_pkg::TYPE_LEN-1:0]  type_i,
+    input logic [encap_pkg::PAYLOAD_LEN-1:0] trace_payload_i,
     
     // output
-    output logic                                encapsulator_ready_o
+    output logic encapsulator_ready_o,
 
-    // add axi lite signals
+    // axi signals
+    output axi_req_t axi_req_o,
+    input  axi_resp_t axi_resp_i  
 );
 
-    `AXI_LITE_TYPEDEF_ALL(axi_lite, logic [AxiAddrWidth-1:0], logic [DataWidth-1:0], logic [DataWidth/8-1:0])
-    axi_lite_req_t axi_lite_req;
-    axi_lite_resp_t axi_lite_rsp;
+    `AXI_LITE_TYPEDEF_ALL(axi_lite, logic [AxiAddrWidth-1:0], logic [AxiDataWidth-1:0], logic [AxiDataWidth/8-1:0])
+    axi_lite_req_t  axi_lite_req;
+    axi_lite_resp_t axi_lite_resp;
 
-    // this struct is defined here because it requires the access to the DataWidth parameter
+    // this struct is defined here because it requires the access to the AxiDataWidth parameter
     typedef struct packed {
-        logic [DataWidth-1:0]            slice;
-        logic [$clog2(DataWidth)-4:0]    valid_bytes;
+        logic [AxiDataWidth-1:0]         slice;
+        logic [$clog2(AxiDataWidth)-4:0] valid_bytes;
     } slicer_fifo_entry_s;
 
     // encapsulator
@@ -60,15 +65,14 @@ module rv_encapsulator_axi #(
     logic                           encap_fifo_empty;
     logic                           encap_fifo_pop;
     // slicer
-    logic                           slicer_valid;
-    logic [DataWidth-1:0]           slice;
-    logic [$clog2(DataWidth)-4:0]   valid_bytes;
-    slicer_fifo_entry_s             slicer_fifo_entry_i;
-    slicer_fifo_entry_s             slicer_fifo_entry_o;
-    logic                           slicer_fifo_full;
-    logic                           slicer_fifo_empty;
-    // atb_transmitter
-    logic                           slicer_fifo_pop;
+    logic                            slicer_valid;
+    logic [AxiDataWidth-1:0]         slice;
+    logic [$clog2(AxiDataWidth)-4:0] valid_bytes;
+    slicer_fifo_entry_s              slicer_fifo_entry_i;
+    slicer_fifo_entry_s              slicer_fifo_entry_o;
+    logic                            slicer_fifo_full;
+    logic                            slicer_fifo_empty;
+    logic                            slicer_fifo_pop;
     
     // slicer_fifo
     assign slicer_fifo_entry_i.valid_bytes = valid_bytes;
@@ -107,7 +111,7 @@ module rv_encapsulator_axi #(
     );
 
     slicer #(
-        .SLICE_LEN(DataWidth)
+        .SLICE_LEN(AxiDataWidth)
     ) i_slicer (
         .clk_i             (clk_i),
         .rst_ni            (rst_ni),
@@ -139,9 +143,12 @@ module rv_encapsulator_axi #(
 
     // to axi_lite
     atb_slice_to_axi_lite #(
-        .AxiDataWidth    ( DataWidth       ),
-        .req_lite_t      ( axi_lite_req_t  ),
-        .resp_lite_t     ( axi_lite_resp_t ),
+        .AxiDataWidth (AxiDataWidth),
+        .AxiAddrWidth (AxiAddrWidth),
+        .req_lite_t   (axi_lite_req_t),
+        .resp_lite_t  (axi_lite_resp_t),
+        .addr_start   (addr_start),
+        .addr_end     (addr_end)
     ) i_atb_slice_to_axi_lite (
         .clk_i        (clk_i),
         .rst_ni       (rst_ni),
@@ -149,26 +156,24 @@ module rv_encapsulator_axi #(
         .slice_i      (slicer_fifo_entry_o.slice),
         .valid_bytes_i(slicer_fifo_entry_o.valid_bytes),
         .fifo_pop_o   (slicer_fifo_pop),
-        .axi_req_t    (axi_req_t),
-        .axi_resp_t   (axi_rsp_t)
-
-
+        .req_lite_o   (axi_lite_req),
+        .resp_lite_i  (axi_lite_resp)
     );
 
         // to axi
     axi_lite_to_axi #(
-        .AxiDataWidth    ( DataWidth       ),
-        .req_lite_t      ( axi_lite_req_t  ),
-        .resp_lite_t     ( axi_lite_resp_t ),
-        .axi_req_t       ( axi_req_t       ),
-        .axi_resp_t      ( axi_rsp_t       )
+        .AxiDataWidth (AxiDataWidth),
+        .req_lite_t   (axi_lite_req_t),
+        .resp_lite_t  (axi_lite_resp_t),
+        .axi_req_t    (axi_req_t),
+        .axi_resp_t   (axi_resp_t)
     ) i_axi_lite_to_axi (
-        .slv_req_lite_i  ( axi_lite_req    ),
-        .slv_resp_lite_o ( axi_lite_rsp    ),
-        .slv_aw_cache_i,
-        .slv_ar_cache_i,
-        .mst_req_o       ( axi_req_o       ),
-        .mst_resp_i      ( axi_rsp_i       )
+        .slv_req_lite_i (axi_lite_req),
+        .slv_resp_lite_o(axi_lite_resp),
+        .slv_aw_cache_i ('0), // connect to anything ??
+        .slv_ar_cache_i ('0), // read not used
+        .mst_req_o      (axi_req_o),
+        .mst_resp_i     (axi_resp_i)
     );
 
     /*
