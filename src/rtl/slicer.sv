@@ -94,7 +94,10 @@ module slicer #(
                 stored_value_d = valid_i;
                 num_slices_d = (total_len + SLICE_LEN -1) / SLICE_LEN;
                 length_left0_d = total_len / 8;
-                length_left1_d = length_left0_q;
+                //length_left1_d = length_left0_q;
+                //lenght_left1_d took the value of length_left0_q that was 0 so nothing happens
+                //valid_o stays at 0, so we change to length_left0_d to change the value earlier and to be able to pop in slicer fifo
+                length_left1_d = (SLICE_LEN==64) ? length_left0_d : length_left0_q;
             end else begin
                 if (slice_index_q == num_slices_q) begin
                     slice_index_d = '0;
