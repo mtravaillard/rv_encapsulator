@@ -71,33 +71,9 @@ assign  b_resp  = resp_lite_i.b.resp;
 // In ATB, the lower bytes is the header, so always valid, vbytes_to_wstrb[0] is always 1
 logic [AxiDataWidth/8-1:0] vbytes_to_wstrb;
 
-// CONCAT AND REPETION
-//{3-valid_bytes_i} {0} {valid_bytes_i} {1} 1
-
-if (AxiDataWidth == 64) begin
-    always @(*) begin
-        case (valid_bytes_i)
-            3'd0: vbytes_to_wstrb = 8'b00000001;
-            3'd1: vbytes_to_wstrb = 8'b00000011;
-            3'd2: vbytes_to_wstrb = 8'b00000111;
-            3'd3: vbytes_to_wstrb = 8'b00001111;
-            3'd4: vbytes_to_wstrb = 8'b00011111;
-            3'd5: vbytes_to_wstrb = 8'b00111111;
-            3'd6: vbytes_to_wstrb = 8'b01111111;
-            3'd7: vbytes_to_wstrb = 8'b11111111;
-            default: vbytes_to_wstrb = 8'b00000001; 
-        endcase
-    end
-end else begin
-    always @(*) begin
-        case (valid_bytes_i)
-            2'd0: vbytes_to_wstrb = 4'b0001;
-            2'd1: vbytes_to_wstrb = 4'b0011;
-            2'd2: vbytes_to_wstrb = 4'b0111;
-            2'd3: vbytes_to_wstrb = 4'b1111;
-            default: vbytes_to_wstrb = 4'b0001; 
-        endcase
-    end
+//w_strb = 2^(valid_bytes_i+1)-1
+always_comb begin
+    vbytes_to_wstrb = (1 << (valid_bytes_i + 1)) - 1;
 end
 
 // #########################################
