@@ -20,4 +20,6 @@ sources:
       - src/rtl/encapsulator.sv
       - src/rtl/atb_transmitter.sv
       - src/rtl/slicer.sv
-      - src/rtl/rv_encapsulator.sv
+      - src/rtl/rv_encapsulator_atb.sv
+      - src/rtl/atb_slice_to_axi_lite.sv
+      - src/rtl/rv_encapsulator_axi.sv
