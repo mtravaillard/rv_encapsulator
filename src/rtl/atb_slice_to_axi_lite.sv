@@ -21,10 +21,7 @@ module atb_slice_to_axi_lite #(
     parameter AxiAddrWidth = 32,
     // LITE AXI structs
     parameter type req_lite_t = logic,
-    parameter type resp_lite_t = logic,
-    // Register
-    parameter addr_start = 32'b0,
-    parameter addr_end = 32'b10000000
+    parameter type resp_lite_t = logic
 ) (
     input logic clk_i,
     input logic rst_ni,
@@ -36,8 +33,10 @@ module atb_slice_to_axi_lite #(
     output logic                            fifo_pop_o,
 
     // Master AXI LITE port
-    output req_lite_t  req_lite_o,
-    input  resp_lite_t resp_lite_i
+    output req_lite_t               req_lite_o,
+    input  resp_lite_t              resp_lite_i,
+    input  logic [AxiAddrWidth-1:0] addr_start_i,
+    input  logic [AxiAddrWidth-1:0] addr_end_i
 );
 
 `include "common_cells/registers.svh"
@@ -87,8 +86,9 @@ atb_to_axilite_state_e state_d, state_q;
 logic [AxiAddrWidth-1:0] aw_addr_d, aw_addr_q;
 
 // Register state and addr with FF
+//`FF(q, d, reset_val, clk, rst_n)
 `FF(state_q, state_d, StIdle, clk_i, rst_ni)
-`FF(aw_addr_q, aw_addr_d, addr_start, clk_i, rst_ni)
+`FF(aw_addr_q, aw_addr_d, addr_start_i, clk_i, rst_ni)
 
 // Combinational decode of the state
 always_comb begin
@@ -112,16 +112,16 @@ always_comb begin
         end
         // StPopNIncr : Popping the fifo and Incrementing the addr counter
         StPopNIncr: begin
-        if(aw_addr_q == addr_end) begin
-            aw_addr_d = addr_start;
+        if(aw_addr_q == addr_end_i) begin
+            aw_addr_d = addr_start_i;
         end else begin 
             aw_addr_d += AxiDataWidth >> 3; // cleaner than /8
         end
         state_d = (fifo_empty_i) ? StIdle : StWrite;
         end
-        // may be empty or used to catch parasitic states
+        // incase of problems
         default: begin
-            aw_addr_d = addr_start; //don't know how to handle this case or if we have too...
+            aw_addr_d = addr_start_i; //don't know how to handle this case or if we have too...
             state_d = StIdle;
         end
     endcase
@@ -170,7 +170,7 @@ always_comb begin
             b_ready = 1'b0;
             fifo_pop_o = 1'b1;
         end
-        // may be empty or used to catch parasitic states
+        // incase of problems
         default: begin
             aw_addr = 32'b0;
             aw_valid = 1'b0;

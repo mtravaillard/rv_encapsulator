@@ -22,10 +22,7 @@ module rv_encapsulator_axi #(
     parameter int unsigned AxiAddrWidth = 32'd0,
     parameter int unsigned AxiDataWidth = 32'd0,
     parameter type         axi_req_t    = logic,
-    parameter type         axi_resp_t   = logic,
-    // Register
-    parameter addr_start = 32'b0,
-    parameter addr_end   = 32'b10000000
+    parameter type         axi_resp_t   = logic
 ) (
     input logic clk_i,
     input logic rst_ni,
@@ -44,7 +41,9 @@ module rv_encapsulator_axi #(
 
     // axi signals
     output axi_req_t axi_req_o,
-    input  axi_resp_t axi_resp_i  
+    input  axi_resp_t axi_resp_i  ,
+    input  logic [AxiAddrWidth-1:0] addr_start_i,
+    input  logic [AxiAddrWidth-1:0] addr_end_i
 );
 
     `AXI_LITE_TYPEDEF_ALL(axi_lite, logic [AxiAddrWidth-1:0], logic [AxiDataWidth-1:0], logic [AxiDataWidth/8-1:0])
@@ -146,9 +145,7 @@ module rv_encapsulator_axi #(
         .AxiDataWidth (AxiDataWidth),
         .AxiAddrWidth (AxiAddrWidth),
         .req_lite_t   (axi_lite_req_t),
-        .resp_lite_t  (axi_lite_resp_t),
-        .addr_start   (addr_start),
-        .addr_end     (addr_end)
+        .resp_lite_t  (axi_lite_resp_t)
     ) i_atb_slice_to_axi_lite (
         .clk_i        (clk_i),
         .rst_ni       (rst_ni),
@@ -157,7 +154,9 @@ module rv_encapsulator_axi #(
         .valid_bytes_i(slicer_fifo_entry_o.valid_bytes),
         .fifo_pop_o   (slicer_fifo_pop),
         .req_lite_o   (axi_lite_req),
-        .resp_lite_i  (axi_lite_resp)
+        .resp_lite_i  (axi_lite_resp),
+        .addr_start_i (addr_start_i),
+        .addr_end_i   (addr_end_i)
     );
 
         // to axi
