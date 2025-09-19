@@ -43,7 +43,10 @@ module rv_encapsulator_axi #(
     output axi_req_t axi_req_o,
     input  axi_resp_t axi_resp_i  ,
     input  logic [AxiAddrWidth-1:0] addr_start_i,
-    input  logic [AxiAddrWidth-1:0] addr_end_i
+    input  logic [AxiAddrWidth-1:0] addr_end_i,
+
+    // reg
+    output logic [AxiAddrWidth-1:0] addr_last_w_o
 );
 
     `AXI_LITE_TYPEDEF_ALL(axi_lite, logic [AxiAddrWidth-1:0], logic [AxiDataWidth-1:0], logic [AxiDataWidth/8-1:0])
@@ -156,7 +159,8 @@ module rv_encapsulator_axi #(
         .req_lite_o   (axi_lite_req),
         .resp_lite_i  (axi_lite_resp),
         .addr_start_i (addr_start_i),
-        .addr_end_i   (addr_end_i)
+        .addr_end_i   (addr_end_i),
+        .addr_last_w_o(addr_last_w_o)
     );
 
         // to axi

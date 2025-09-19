@@ -16,6 +16,8 @@
 // It does not handle reading transaction, as it is not useful in this case.
 // We consider that there is a FIFO before this module.
 
+`include "common_cells/registers.svh"
+
 module atb_slice_to_axi_lite #(
     parameter AxiDataWidth = 32,
     parameter AxiAddrWidth = 32,
@@ -36,10 +38,9 @@ module atb_slice_to_axi_lite #(
     output req_lite_t               req_lite_o,
     input  resp_lite_t              resp_lite_i,
     input  logic [AxiAddrWidth-1:0] addr_start_i,
-    input  logic [AxiAddrWidth-1:0] addr_end_i
+    input  logic [AxiAddrWidth-1:0] addr_end_i,
+    output logic [AxiAddrWidth-1:0] addr_last_w_o // address of the last written data.
 );
-
-`include "common_cells/registers.svh"
 
 // defines internal req signals
 logic [AxiAddrWidth-1:0]  aw_addr; // address always on 32 bits
@@ -195,6 +196,9 @@ assign req_lite_o.b_ready  = b_ready;
 assign req_lite_o.ar       = '0;
 assign req_lite_o.ar_valid = '0;
 assign req_lite_o.r_ready  = '0;
+
+// Address of the last written data
+assign addr_last_w_o = aw_addr_q;
 
 // Assertions
 /*
